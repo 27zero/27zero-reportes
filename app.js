@@ -320,7 +320,7 @@
 
     var hayDatos = res.filas.length > 0;
     $('vacio').classList.toggle('hidden', hayDatos);
-    ['btnGuardar', 'btnLink', 'btnCsv'].forEach(function (b) { $(b).disabled = !hayDatos; });
+    ['btnGuardar', 'btnLink', 'btnCsv', 'btnPdf'].forEach(function (b) { $(b).disabled = !hayDatos; });
 
     pintarKpis(cols, res);
     pintarGrafico(cols, res, cfg);
@@ -617,6 +617,233 @@
     return lineas.join('\n');
   }
 
+
+  /* ================= PDF ================= */
+
+  var LIBS_PDF = [
+    'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js',
+    'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js'
+  ];
+  function cargarScript(src) {
+    return new Promise(function (ok, mal) {
+      var s = document.createElement('script');
+      s.src = src; s.onload = ok;
+      s.onerror = function () { mal(new Error('No se pudo cargar el generador de PDF. Revisa tu conexión a internet.')); };
+      document.head.appendChild(s);
+    });
+  }
+  /** Las librerías de PDF se cargan solo la primera vez que alguien descarga un PDF. */
+  function cargarLibsPdf() {
+    var listo = function () { return window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API && window.jspdf.jsPDF.API.autoTable; };
+    if (listo()) return Promise.resolve();
+    var p = window.jspdf ? Promise.resolve() : cargarScript(LIBS_PDF[0]);
+    return p.then(function () { return listo() ? null : cargarScript(LIBS_PDF[1]); });
+  }
+
+  function pdf() {
+    if (!ultimo || !ultimo.res.filas.length) return;
+    $('btnPdf').disabled = true; cargando(true);
+    cargarLibsPdf().then(function () {
+      construirPdf();
+      toast('PDF descargado.');
+    }).catch(function (e) { toast(e.message); })
+      .then(function () { $('btnPdf').disabled = false; cargando(false); });
+  }
+
+  /** Las fuentes estándar del PDF solo tienen caracteres latinos: se reemplazan los demás. */
+  function txtPdf(s) {
+    return String(s === null || s === undefined ? '' : s)
+      .replace(/Δ\s?/g, 'Var. ').replace(/▲/g, '+').replace(/▼/g, '-').replace(/[−–—]/g, '-')
+      .replace(/→/g, 'a').replace(/[“”]/g, '"').replace(/[‘’]/g, "'").replace(/…/g, '...')
+      .replace(/[  ]/g, ' ').replace(/[\u2022\u25CF]/g, '-').replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF]/g, '');
+  }
+  function deltaTxt(v) {
+    if (v === '' || v === null || v === undefined) return '-';
+    return (v > 0 ? '+' : v < 0 ? '-' : '') + NF.p.format(Math.abs(v));
+  }
+  function colorDelta(v, metrica) {
+    if (typeof v !== 'number' || Math.abs(v) < 0.0005) return [142, 135, 159];
+    var bueno = INVERSAS.indexOf(metrica) !== -1 ? v < 0 : v > 0;
+    return bueno ? [31, 122, 77] : [179, 38, 30];
+  }
+
+  function construirPdf() {
+    var jsPDF = window.jspdf.jsPDF;
+    var cfg = ultimo.cfg, res = ultimo.res, cols = columnas(res, cfg), nd = res.nDimensiones;
+    // En el PDF no se repite la columna "anterior": se deja el valor actual y su variación.
+    var colsDim = cols.filter(function (c) { return c.tipo === 't'; });
+    var colsMet = cols.filter(function (c) { return c.tipo !== 't' && c.rol !== 'prev'; });
+    var apaisado = colsDim.length + colsMet.length > 7;
+    var doc = new jsPDF({ orientation: apaisado ? 'landscape' : 'portrait', unit: 'pt', format: 'a4' });
+    var W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 40, ANCHO = W - 2 * M;
+    var C = { v900: [28, 6, 63], v700: [62, 18, 140], v300: [172, 138, 227], v50: [244, 240, 252], o500: [232, 119, 42], o700: [194, 90, 18],
+      ink: [21, 16, 31], ink7: [47, 40, 67], ink5: [100, 92, 124], ink4: [142, 135, 159], ink2: [225, 222, 233] };
+    var y;
+    var clientes = nombresClientes(cfg).join(', ');
+    var fuentes = cfg.plataformas.length ? cfg.plataformas.join(', ') : 'Todas las fuentes';
+    var ahora = new Intl.DateTimeFormat('es-CO', { timeZone: TZ, dateStyle: 'long', timeStyle: 'short' }).format(new Date());
+
+    function color(fn, c) { doc[fn](c[0], c[1], c[2]); }
+    function fuente(f, est, tam, col) { doc.setFont(f, est); doc.setFontSize(tam); color('setTextColor', col); }
+    function espacio(alto) { if (y + alto > H - 50) { doc.addPage(); y = M; } }
+    function eyebrow(texto, x, yy, col) { fuente('courier', 'bold', 8.5, col || C.v700); doc.text(txtPdf(texto).toUpperCase(), x, yy, { charSpace: 1.2 }); }
+
+    // ---- Encabezado de marca
+    color('setFillColor', C.v900); doc.rect(0, 0, W, 62, 'F');
+    fuente('times', 'bold', 21, [255, 255, 255]); doc.text('27zero', M, 39);
+    var wl = doc.getTextWidth('27zero');
+    color('setTextColor', C.o500); doc.text('.', M + wl, 39);
+    eyebrow('Reportes', M + wl + 16, 38, C.v300);
+    fuente('helvetica', 'normal', 8.5, [217, 210, 234]);
+    doc.text(txtPdf('Generado el ' + ahora + (usuario ? ' por ' + (usuario.nombre || usuario.email) : '')), W - M, 38, { align: 'right' });
+
+    // ---- Título
+    y = 96;
+    eyebrow(clientes, M, y); y += 24;
+    fuente('times', 'bold', 22, C.ink);
+    var titulo = doc.splitTextToSize(txtPdf(fuentes + '.'), ANCHO);
+    doc.text(titulo, M, y); y += titulo.length * 24;
+    fuente('helvetica', 'normal', 10, C.ink5);
+    doc.text(txtPdf(nombreOp(OP.periodos, cfg.periodo) + ': ' + res.periodo.inicio + ' al ' + res.periodo.fin +
+      (res.comparacion ? '  ·  comparado con ' + res.comparacion.inicio + ' al ' + res.comparacion.fin : '')), M, y);
+    y += 20;
+
+    // ---- Avisos
+    res.avisos.forEach(function (a) {
+      var l = doc.splitTextToSize(txtPdf(a), ANCHO - 16);
+      espacio(l.length * 12 + 10);
+      color('setFillColor', [255, 244, 236]); doc.roundedRect(M, y - 10, ANCHO, l.length * 12 + 8, 4, 4, 'F');
+      fuente('helvetica', 'normal', 8.5, C.o700); doc.text(l, M + 8, y); y += l.length * 12 + 6;
+    });
+    y += 6;
+
+    // ---- KPIs
+    var fila = filaTotales(res) || [];
+    var kpis = cols.filter(function (c) { return c.rol === 'act'; }).slice(0, apaisado ? 12 : 8);
+    var porFila = apaisado ? 6 : 4, gap = 10, kw = (ANCHO - gap * (porFila - 1)) / porFila, kh = 60;
+    kpis.forEach(function (c, k) {
+      var col = k % porFila;
+      if (col === 0) { if (k) y += kh + gap; espacio(kh + 4); }
+      var x = M + col * (kw + gap);
+      color('setDrawColor', C.ink2); doc.setLineWidth(0.8); doc.roundedRect(x, y, kw, kh, 8, 8, 'S');
+      fuente('courier', 'bold', 7, C.ink5);
+      doc.text(doc.splitTextToSize(txtPdf(c.nombre).toUpperCase(), kw - 20)[0], x + 10, y + 16);
+      var v = fila[c.i], vacio = v === '' || v === null || v === undefined;
+      fuente('times', 'bold', 16, C.ink); doc.text(txtPdf(vacio ? '-' : fmtTxt(v, c.tipo)), x + 10, y + 36);
+      if (vacio) { fuente('helvetica', 'normal', 6.5, C.ink4); doc.text('No se suma: ver la tabla', x + 10, y + 50); }
+      else if (res.comparacion) {
+        var d = fila[c.i + 2];
+        fuente('helvetica', 'bold', 7.5, colorDelta(d, c.metrica)); doc.text(txtPdf(deltaTxt(d)), x + 10, y + 50);
+        var wd = doc.getTextWidth(txtPdf(deltaTxt(d)));
+        fuente('helvetica', 'normal', 7.5, C.ink4); doc.text(txtPdf(' vs ' + fmtTxt(fila[c.i + 1], c.tipo)), x + 10 + wd, y + 50);
+      }
+    });
+    if (kpis.length) y += kh + 22;
+
+    // ---- Bloques de texto (narrativa)
+    function bloqueTexto(titulo, texto, autor) {
+      if (!texto) return;
+      var lineas = doc.splitTextToSize(txtPdf(texto), ANCHO - 18);
+      espacio(40);
+      eyebrow(titulo, M, y); y += 16;
+      fuente('helvetica', 'normal', 10, C.ink7);
+      lineas.forEach(function (l) {
+        if (y + 14 > H - 50) { doc.addPage(); y = M; fuente('helvetica', 'normal', 10, C.ink7); }
+        color('setFillColor', C.o500); doc.rect(M, y - 9, 2.5, 13, 'F');
+        doc.text(l, M + 12, y); y += 14;
+      });
+      if (autor) { fuente('helvetica', 'italic', 8, C.ink4); doc.text(txtPdf(autor), M + 12, y + 2); y += 12; }
+      y += 12;
+    }
+    var nars = res.narrativas || {};
+    var firma = function (n) { return n ? 'Por ' + n.autor + ' · ' + n.actualizado : ''; };
+    if (nars.resumen) bloqueTexto('Análisis del periodo', nars.resumen.texto, firma(nars.resumen));
+
+    // ---- Gráfico (la misma imagen que se ve en pantalla)
+    var canvas = $('chart');
+    if (!$('chartCard').classList.contains('hidden') && canvas && canvas.width) {
+      var fondo = document.createElement('canvas');
+      fondo.width = canvas.width; fondo.height = canvas.height;
+      var ctx = fondo.getContext('2d');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, fondo.width, fondo.height); ctx.drawImage(canvas, 0, 0);
+      var gw = ANCHO, gh = gw * canvas.height / canvas.width, maxH = apaisado ? 230 : 260;
+      if (gh > maxH) { gw = gw * maxH / gh; gh = maxH; }
+      var libre = H - 50 - y - 30; // si queda bastante espacio en la hoja, se achica para no dejarla vacía
+      if (gh > libre && libre >= 150) { gw = gw * libre / gh; gh = libre; }
+      espacio(gh + 30);
+      eyebrow($('chartTitle').textContent, M, y); y += 10;
+      doc.addImage(fondo.toDataURL('image/png'), 'PNG', M + (ANCHO - gw) / 2, y, gw, gh);
+      y += gh + 18;
+      if (nars.grafico) bloqueTexto('Nota del gráfico', nars.grafico.texto, firma(nars.grafico));
+    }
+
+    // ---- Tabla
+    var cuerpoRaw = res.filas.slice();
+    if (orden.col !== null) { // respeta el orden que se eligió en pantalla
+      var oc = orden.col;
+      cuerpoRaw.sort(function (a, b) {
+        var p = a[oc], q = b[oc];
+        if (p === '' || p === null) return 1; if (q === '' || q === null) return -1;
+        var r = typeof p === 'number' && typeof q === 'number' ? p - q : String(p).localeCompare(String(q), 'es');
+        return orden.asc ? r : -r;
+      });
+    }
+    var hayTotal = res.total && res.total.length;
+    if (hayTotal) cuerpoRaw.push(res.total);
+    var celdaTxt = function (f, c) {
+      var v = f[c.i];
+      if (c.rol === 'delta') return txtPdf(deltaTxt(v));
+      if (v === '' || v === null || v === undefined) return c.tipo === 't' ? '' : '-';
+      return txtPdf(fmtTxt(v, c.tipo));
+    };
+    // Si hay muchas métricas, la tabla se parte en bloques que repiten las dimensiones.
+    var porBloque = Math.max(3, (apaisado ? 11 : 7) - colsDim.length);
+    var bloques = [];
+    for (var b0 = 0; b0 < colsMet.length; b0 += porBloque) bloques.push(colsMet.slice(b0, b0 + porBloque));
+    if (!bloques.length) bloques.push([]);
+    bloques.forEach(function (bloque, nb) {
+      var colsT = colsDim.concat(bloque);
+      espacio(70);
+      eyebrow('Tabla · ' + res.filas.length + (res.filas.length === 1 ? ' fila' : ' filas') +
+        (bloques.length > 1 ? ' · parte ' + (nb + 1) + ' de ' + bloques.length : ''), M, y);
+      y += 8;
+      var estilosCol = {};
+      colsT.forEach(function (c, k) { if (c.tipo !== 't') estilosCol[k] = { halign: 'right' }; });
+      doc.autoTable({
+        startY: y,
+        margin: { left: M, right: M, bottom: 50 },
+        head: [colsT.map(function (c) { return txtPdf(c.nombre); })],
+        body: cuerpoRaw.map(function (f) { return colsT.map(function (c) { return celdaTxt(f, c); }); }),
+        styles: { font: 'helvetica', fontSize: 8, cellPadding: 4, textColor: C.ink, lineColor: C.ink2, lineWidth: 0.4, overflow: 'linebreak' },
+        headStyles: { fillColor: C.v700, textColor: [255, 255, 255], fontStyle: 'bold', valign: 'bottom' },
+        columnStyles: estilosCol,
+        rowPageBreak: 'avoid',
+        didParseCell: function (data) {
+          if (data.section !== 'body') return;
+          var esTotal = hayTotal && data.row.index === cuerpoRaw.length - 1;
+          if (esTotal) { data.cell.styles.fontStyle = 'bold'; data.cell.styles.fillColor = C.v50; }
+          var c = colsT[data.column.index];
+          if (c && c.rol === 'delta') data.cell.styles.textColor = colorDelta(cuerpoRaw[data.row.index][c.i], c.metrica);
+        }
+      });
+      y = doc.lastAutoTable.finalY + 20;
+    });
+    if (nars.tabla) bloqueTexto('Nota de la tabla', nars.tabla.texto, firma(nars.tabla));
+
+    // ---- Pie de página en todas las hojas
+    var total = doc.internal.getNumberOfPages();
+    for (var pg = 1; pg <= total; pg++) {
+      doc.setPage(pg);
+      color('setDrawColor', C.ink2); doc.setLineWidth(0.6); doc.line(M, H - 32, W - M, H - 32);
+      fuente('helvetica', 'normal', 7.5, C.ink4);
+      doc.text(txtPdf('27zero · Reportes  ·  ' + clientes + '  ·  ' + res.periodo.inicio + ' al ' + res.periodo.fin), M, H - 20);
+      doc.text('Página ' + pg + ' de ' + total, W - M, H - 20, { align: 'right' });
+    }
+
+    var slug = function (s) { return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase(); };
+    doc.save('27zero_' + slug(clientes) + '_' + res.periodo.inicio + '_' + res.periodo.fin + '.pdf');
+  }
+
   /* ================= Exportar, enlace, guardados ================= */
 
   function csv() {
@@ -687,6 +914,7 @@
     $('btnConsultar').addEventListener('click', consultar);
     $('btnSalir').addEventListener('click', salir);
     $('btnCsv').addEventListener('click', csv);
+    $('btnPdf').addEventListener('click', pdf);
     $('btnLink').addEventListener('click', copiarEnlace);
     $('btnGuardar').addEventListener('click', guardar);
     $('cliente').addEventListener('change', alCambiarCliente);
