@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>27zero Reportes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<section id="login" class="login hidden">
+  <div class="login-glow"></div>
+  <div class="login-box">
+    <div class="logo logo-lg">27zero<span>.</span></div>
+    <div class="eyebrow eyebrow-dark"><span class="bar"></span>Reportes</div>
+    <h1>Tus datos de marketing. En un solo lugar.</h1>
+    <p>GA4, Google Ads, LinkedIn y HubSpot, con las mismas reglas para todos los reportes.</p>
+    <div id="gbtn"></div>
+    <div id="loginMsg" class="login-msg"></div>
+  </div>
+</section>
+
+<!-- ============ APP ============ -->
+<div id="app" class="hidden">
+  <header class="top">
+    <div class="logo">27zero<span>.</span></div>
+    <div class="eyebrow eyebrow-dark top-eb">Reportes</div>
+    <div class="top-right">
+      <span id="demoBadge" class="badge badge-orange hidden">Modo demo</span>
+      <span id="userName" class="user"></span>
+      <span id="userRol" class="badge"></span>
+      <button id="btnSalir" class="btn-ghost-dark" title="Cerrar sesión"><i data-lucide="log-out"></i></button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- Constructor -->
+    <aside class="builder">
+      <div class="sec" id="secCliente">
+        <div class="eyebrow">Cliente</div>
+        <select id="cliente" class="select-lg"></select>
+      </div>
+
+      <div class="sec">
+        <div class="eyebrow">Plantillas</div>
+        <div class="plantillas">
+          <button data-plantilla="resumen">Resumen mensual por plataforma</button>
+          <button data-plantilla="campanas">Campañas pagas</button>
+          <button data-plantilla="embudo">Embudo semanal</button>
+          <button data-plantilla="organico">LinkedIn orgánico</button>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="eyebrow">Fuentes <a data-todos="pla">todas</a></div>
+        <div class="chips" id="pla"></div>
+      </div>
+
+      <div class="sec">
+        <div class="eyebrow">Dividir por <a data-limpiar="dim">limpiar</a></div>
+        <div class="chips" id="dim"></div>
+        <div class="hint">El número es el orden de las columnas.</div>
+      </div>
+
+      <div class="sec">
+        <div class="eyebrow">Métricas <a data-limpiar="met">limpiar</a></div>
+        <div class="chips" id="metB"></div>
+        <div class="hint">Calculadas sobre los totales</div>
+        <div class="chips" id="metC"></div>
+      </div>
+
+      <div class="sec">
+        <div class="eyebrow">Filtro</div>
+        <input type="text" id="filtro" placeholder="Campaña contiene…">
+      </div>
+
+      <div class="builder-foot">
+        <button id="btnConsultar" class="btn-primary">Obtener datos</button>
+      </div>
+
+      <div class="sec">
+        <div class="eyebrow">Mis reportes guardados</div>
+        <div id="guardados" class="guardados"></div>
+      </div>
+    </aside>
+
+    <!-- Resultados -->
+    <main class="results">
+      <div class="res-head">
+        <div>
+          <div class="eyebrow" id="resEyebrow">Resultado</div>
+          <h2 id="resTitulo">Arma tu consulta.</h2>
+          <div class="res-sub" id="resSub">Elige cliente, fechas y métricas, y dale a "Obtener datos".</div>
+        </div>
+        <div class="res-actions">
+          <button id="btnGuardar" class="btn-ghost" disabled><i data-lucide="bookmark"></i>Guardar</button>
+          <button id="btnLink" class="btn-ghost" disabled><i data-lucide="link"></i>Copiar enlace</button>
+          <button id="btnCsv" class="btn-ghost" disabled><i data-lucide="download"></i>CSV</button>
+        </div>
+      </div>
+
+      <!-- Barra de fechas -->
+      <div class="datebar">
+        <div class="db-field">
+          <label for="periodo">Periodo</label>
+          <select id="periodo"></select>
+        </div>
+        <div class="db-field db-range">
+          <label>Fechas</label>
+          <div class="db-dates">
+            <input type="date" id="desde" aria-label="Desde">
+            <span class="db-arrow">→</span>
+            <input type="date" id="hasta" aria-label="Hasta">
+          </div>
+        </div>
+        <div class="db-field">
+          <label for="comparar">Comparar con</label>
+          <select id="comparar">
+            <option value="ninguno">Sin comparación</option>
+            <option value="anterior">Periodo anterior</option>
+            <option value="anio">Mismo periodo del año anterior</option>
+          </select>
+        </div>
+        <div class="db-hint" id="rangoDatos"></div>
+      </div>
+
+      <div id="avisos"></div>
+      <div id="kpis" class="kpis"></div>
+
+      <div class="card nar-card hidden" id="narResumenCard">
+        <div class="card-head"><div class="eyebrow">Análisis del periodo</div></div>
+        <div class="nar" data-sec="resumen"></div>
+      </div>
+
+      <div class="card hidden" id="chartCard">
+        <div class="card-head">
+          <div class="eyebrow" id="chartTitle">Gráfico</div>
+          <div class="chart-ctrls">
+            <select id="chartTipo" class="select-sm" title="Tipo de gráfica">
+              <option value="auto">Automático</option>
+              <option value="linea">Líneas</option>
+              <option value="area">Área</option>
+              <option value="barras">Barras</option>
+              <option value="barrash">Barras horizontales</option>
+              <option value="apiladas">Barras apiladas</option>
+              <option value="dona">Dona</option>
+            </select>
+            <select id="chartMetric" class="select-sm" title="Métrica del gráfico"></select>
+          </div>
+        </div>
+        <div class="chart-note hint" id="chartNote"></div>
+        <div class="chart-wrap"><canvas id="chart"></canvas></div>
+        <div class="nar nar-sub" data-sec="grafico"></div>
+      </div>
+
+      <div class="card hidden" id="tableCard">
+        <div class="card-head"><div class="eyebrow">Tabla</div><span class="hint" id="nFilas"></span></div>
+        <div class="table-wrap"><table id="tabla"></table></div>
+        <div class="nar nar-sub" data-sec="tabla"></div>
+      </div>
+
+      <div id="vacio" class="vacio">
+        <div class="vacio-dots"></div>
+        <p>Sin datos todavía. Prueba una plantilla para empezar.</p>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<div id="loading" class="loading hidden"><div class="spinner"></div></div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="demo.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
