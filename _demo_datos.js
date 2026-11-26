@@ -60,6 +60,19 @@
   }
 
   log_ = function () {};
+  // Narrativas en memoria (en el portal real viven en la pestaña "narrativas" de la hoja)
+  var NARRATIVAS_DEMO = {};
+  leerNarrativas_ = function (clave) {
+    var o = {};
+    Object.keys(NARRATIVAS_DEMO).forEach(function (k) { var p = k.split('#'); if (p[0] === clave) o[p[1]] = NARRATIVAS_DEMO[k]; });
+    return o;
+  };
+  upsertNarrativa_ = function (clave, seccion, clientes, desde, hasta, texto, autor) {
+    var k = clave + '#' + seccion;
+    if (!texto) { delete NARRATIVAS_DEMO[k]; return null; }
+    NARRATIVAS_DEMO[k] = { texto: texto, autor: autor, actualizado: Utilities.formatDate(new Date(), 'America/Bogota', 'yyyy-MM-dd HH:mm') };
+    return NARRATIVAS_DEMO[k];
+  };
   listarConsultas_ = function () { return []; };
   var FILAS_DEMO = null;
   leerUnificado_ = function () { if (!FILAS_DEMO) FILAS_DEMO = generarFilas(); return FILAS_DEMO; };
@@ -67,7 +80,7 @@
 
   var USUARIO_DEMO = { email: 'demo@27zero.co', nombre: 'Equipo 27zero (demo)', rol: 'admin', clientes: [] };
 
-  window.DEMO_API = function (accion, cfg) {
+  window.DEMO_API = function (accion, cfg, extra) {
     return new Promise(function (ok, mal) {
       setTimeout(function () {
         try {
@@ -78,6 +91,8 @@
             ok(op);
           } else if (accion === 'consultar') {
             ok(consultarWeb_(USUARIO_DEMO, cfg || {}));
+          } else if (accion === 'narrativa_guardar') {
+            ok(guardarNarrativaWeb_(USUARIO_DEMO, cfg || {}, extra && extra.seccion, extra && extra.texto));
           } else { mal(new Error('Acción no válida.')); }
         } catch (e) { mal(e); }
       }, 250);

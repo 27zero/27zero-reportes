@@ -170,3 +170,7 @@ tr.total td{font-weight:700;background:var(--v50);position:sticky;bottom:0}
   .builder,.top,.res-actions,.datebar select,.chart-ctrls,.nar-actions,.nar-empty,.btn-link{display:none!important}
   .layout{display:block}.results{padding:0}
 }
+
+/* ---------- v3: PDF ---------- */
+.btn-pdf:not(:disabled){background:var(--v700);border-color:var(--v700);color:#fff}
+.btn-pdf:hover:not(:disabled){background:#4A1AA3;color:#fff}
