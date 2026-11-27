@@ -174,3 +174,9 @@ tr.total td{font-weight:700;background:var(--v50);position:sticky;bottom:0}
 /* ---------- v3: PDF ---------- */
 .btn-pdf:not(:disabled){background:var(--v700);border-color:var(--v700);color:#fff}
 .btn-pdf:hover:not(:disabled){background:#4A1AA3;color:#fff}
+
+/* ---------- v4: métricas agrupadas ---------- */
+.met-grupo{font-size:11.5px;font-weight:600;color:var(--ink500);margin:12px 0 6px}
+.met-grupo:first-child{margin-top:0}
+.chip.calc{border-style:dashed}
+.chip.calc.on{border-style:solid}

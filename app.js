@@ -164,8 +164,7 @@
 
     chips('pla', OP.plataformas.map(function (p) { return { id: p, nombre: p }; }), 'pla');
     chips('dim', OP.dimensiones, 'dim', true);
-    chips('metB', OP.metricasBase, 'met');
-    chips('metC', OP.metricasCalc, 'met');
+    pintarGruposMetricas();
 
     $('periodo').innerHTML = OP.periodos.map(function (p) { return '<option value="' + p.id + '">' + esc(p.nombre) + '</option>'; }).join('');
     $('periodo').value = 'ultimos_30';
@@ -186,6 +185,8 @@
       var c = document.createElement('span');
       c.className = 'chip';
       c.dataset.id = it.id; c.dataset.grupo = grupo; c.dataset.nombre = it.nombre;
+      if (it.ayuda) c.title = it.nombre + '\n' + it.ayuda.split(' · ').join('\n');
+      if (it.calculada) c.classList.add('calc');
       if (ordenado) c.dataset.ord = '1';
       c.addEventListener('click', function () {
         var arr = sel[grupo], i = arr.indexOf(it.id);
@@ -193,6 +194,22 @@
         pintarChips();
       });
       el.appendChild(c);
+    });
+  }
+
+  /** Métricas agrupadas por plataforma (Sitio web, Pauta y LinkedIn, CRM). */
+  function pintarGruposMetricas() {
+    var todas = OP.metricasBase.concat(OP.metricasCalc);
+    var orden = ['Sitio web (GA4)', 'Pauta y LinkedIn', 'CRM (HubSpot)'];
+    var grupos = {};
+    todas.forEach(function (m) { var g = m.grupo || 'Otras'; (grupos[g] = grupos[g] || []).push(m); });
+    Object.keys(grupos).forEach(function (g) { if (orden.indexOf(g) === -1) orden.push(g); });
+    var cont = $('metricas'); cont.innerHTML = '';
+    orden.filter(function (g) { return grupos[g]; }).forEach(function (g, k) {
+      var t = document.createElement('div'); t.className = 'met-grupo'; t.textContent = g;
+      var d = document.createElement('div'); d.className = 'chips'; d.id = 'metG' + k;
+      cont.appendChild(t); cont.appendChild(d);
+      chips(d.id, grupos[g], 'met');
     });
   }
 
