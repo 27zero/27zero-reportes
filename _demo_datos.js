@@ -40,8 +40,17 @@
         [['Organic Search', '(organic)', 520], ['Paid Search', 'Search · Genérica', 210], ['Direct', '(direct)', 260], ['Paid Social', 'Lead Gen · Webinar', 90], ['Referral', '(referral)', 70], ['Email', 'Newsletter EdTech Mentor', 60]]
           .forEach(function (g) {
             var ses = Math.round(ruido(g[2] * k, 0.35));
-            fila({ plataforma: 'Google Analytics', categoria: 'web', canal: g[0], campana: g[1], sesiones: ses, usuarios: Math.round(ses * 0.82),
+            var fm = { 'Organic Search': 'google / organic', 'Paid Search': 'google / cpc', 'Direct': '(direct) / (none)', 'Paid Social': 'linkedin / paid', 'Referral': 'educause.edu / referral', 'Email': 'hs_email / email' }[g[0]];
+            var comp = Math.round(ses * ruido(0.55, 0.2));
+            fila({ plataforma: 'Google Analytics', categoria: 'web', canal: g[0], campana: g[1], fuente_medio: fm, sesiones: ses, usuarios: Math.round(ses * 0.82),
+              usuarios_activos: Math.round(ses * 0.8), vistas: Math.round(ses * ruido(2.3, 0.3)), sesiones_comprometidas: comp,
+              tiempo_interaccion_seg: Math.round(comp * ruido(95, 0.4)),
               conversiones: Math.round(ses * ruido(0.018, 0.9)), valor_conversiones: 0 });
+          });
+        [['/', 900], ['/servicios/', 260], ['/blog/ia-en-educacion/', 180], ['/blog/estrategia-edtech-2026/', 140], ['/casos-de-exito/', 120], ['/contacto/', 80], ['/blog/guia-de-marca/', 60]]
+          .forEach(function (g) {
+            var v = Math.round(ruido(g[1] * k, 0.4)), u = Math.round(v * 0.7);
+            fila({ plataforma: 'Google Analytics · Páginas', categoria: 'web', canal: '', campana: '', pagina: g[0], vistas: v, usuarios_activos: u, tiempo_interaccion_seg: Math.round(u * ruido(55, 0.5)) });
           });
 
         var impOrg = Math.round(ruido(1800 * k, 0.6));
