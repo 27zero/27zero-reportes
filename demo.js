@@ -453,42 +453,107 @@ var DIMENSIONES_ = {
 var DIMS_TIEMPO_ = ['fecha', 'semana', 'mes'];
 
 // tipo: n = número entero, d = dinero, p = porcentaje, r = razón
+// nombre: nombre en el portal cuando se mezclan plataformas.
+// por:    [nombre oficial en esa plataforma, nombre técnico en su API]. Si el resultado viene
+//         de UNA sola plataforma, el portal muestra el nombre oficial de esa plataforma.
+var GA_ = 'Google Analytics', GAP_ = 'Google Analytics · Páginas', ADS_ = 'Google Ads',
+  LIA_ = 'LinkedIn Ads', LIO_ = 'LinkedIn', HS_ = 'HubSpot';
+function por_(pares) { var o = {}; for (var i = 0; i < pares.length; i += 2) o[pares[i]] = pares[i + 1]; return o; }
+
 var METRICAS_BASE_ = {
-  impresiones:        { nombre: 'Impresiones',       tipo: 'n' },
-  clics:              { nombre: 'Clics',             tipo: 'n' },
-  inversion:          { nombre: 'Inversión',         tipo: 'd' },
-  conversiones:       { nombre: 'Conversiones',      tipo: 'r' },
-  valor_conversiones: { nombre: 'Valor conversiones', tipo: 'd' },
-  sesiones:           { nombre: 'Sesiones',          tipo: 'n' },
-  usuarios:           { nombre: 'Usuarios',          tipo: 'n' },
-  leads:              { nombre: 'Leads',             tipo: 'n' },
-  negocios_creados:   { nombre: 'Negocios creados',  tipo: 'n' },
-  negocios_ganados:   { nombre: 'Negocios ganados',  tipo: 'n' },
-  valor_negocios:     { nombre: 'Valor negocios',    tipo: 'd' },
-  seguidores_nuevos:  { nombre: 'Seguidores nuevos', tipo: 'n' },
-  interacciones:      { nombre: 'Interacciones',     tipo: 'n' },
-  usuarios_activos:   { nombre: 'Usuarios activos',  tipo: 'n' },
-  vistas:             { nombre: 'Vistas',            tipo: 'n' },
-  sesiones_comprometidas: { nombre: 'Sesiones con interacción', tipo: 'n' },
-  tiempo_interaccion_seg: { nombre: 'Tiempo de interacción total (seg)', tipo: 'n' }
+  impresiones: { nombre: 'Impresiones', tipo: 'n', grupo: 'Pauta y LinkedIn',
+    por: por_([ADS_, ['Impresiones', 'metrics.impressions'], LIA_, ['Impresiones', 'impressions'], LIO_, ['Impresiones', 'impressionCount']]) },
+  clics: { nombre: 'Clics', tipo: 'n', grupo: 'Pauta y LinkedIn',
+    por: por_([ADS_, ['Clics', 'metrics.clicks'], LIA_, ['Clics', 'clicks'], LIO_, ['Clics', 'clickCount']]) },
+  inversion: { nombre: 'Inversión', tipo: 'd', grupo: 'Pauta y LinkedIn',
+    por: por_([ADS_, ['Costo', 'metrics.cost_micros'], LIA_, ['Gasto total', 'costInLocalCurrency']]) },
+  conversiones: { nombre: 'Conversiones', tipo: 'r', grupo: 'Pauta y LinkedIn',
+    por: por_([ADS_, ['Conversiones', 'metrics.conversions'], LIA_, ['Conversiones', 'externalWebsiteConversions'], GA_, ['Eventos clave', 'keyEvents']]) },
+  valor_conversiones: { nombre: 'Valor de conversiones', tipo: 'd', grupo: 'Pauta y LinkedIn',
+    por: por_([ADS_, ['Valor de conv.', 'metrics.conversions_value'], GA_, ['Ingresos totales', 'totalRevenue']]) },
+  interacciones: { nombre: 'Interacciones', tipo: 'n', grupo: 'Pauta y LinkedIn',
+    por: por_([LIA_, ['Interacciones', 'totalEngagements'], LIO_, ['Interacciones (reacciones + comentarios + compartidos + clics)', 'likeCount + commentCount + shareCount + clickCount']]) },
+  seguidores_nuevos: { nombre: 'Nuevos seguidores', tipo: 'n', grupo: 'Pauta y LinkedIn',
+    por: por_([LIO_, ['Nuevos seguidores', 'organicFollowerGain + paidFollowerGain']]) },
+
+  sesiones: { nombre: 'Sesiones', tipo: 'n', grupo: 'Sitio web (GA4)', por: por_([GA_, ['Sesiones', 'sessions']]) },
+  usuarios_activos: { nombre: 'Usuarios activos', tipo: 'n', grupo: 'Sitio web (GA4)',
+    por: por_([GA_, ['Usuarios activos', 'activeUsers'], GAP_, ['Usuarios activos', 'activeUsers']]) },
+  usuarios: { nombre: 'Total de usuarios', tipo: 'n', grupo: 'Sitio web (GA4)', por: por_([GA_, ['Total de usuarios', 'totalUsers']]) },
+  vistas: { nombre: 'Vistas', tipo: 'n', grupo: 'Sitio web (GA4)',
+    por: por_([GA_, ['Vistas', 'screenPageViews'], GAP_, ['Vistas', 'screenPageViews']]) },
+  sesiones_comprometidas: { nombre: 'Sesiones con interacción', tipo: 'n', grupo: 'Sitio web (GA4)',
+    por: por_([GA_, ['Sesiones con interacción', 'engagedSessions']]) },
+  tiempo_interaccion_seg: { nombre: 'Duración de la interacción del usuario (seg)', tipo: 'n', grupo: 'Sitio web (GA4)',
+    por: por_([GA_, ['Duración de la interacción del usuario (seg)', 'userEngagementDuration'], GAP_, ['Duración de la interacción del usuario (seg)', 'userEngagementDuration']]) },
+
+  leads: { nombre: 'Leads', tipo: 'n', grupo: 'CRM (HubSpot)',
+    por: por_([HS_, ['Contactos creados', 'contacts · createdate'], LIA_, ['Clientes potenciales', 'oneClickLeads']]) },
+  negocios_creados: { nombre: 'Negocios creados', tipo: 'n', grupo: 'CRM (HubSpot)', por: por_([HS_, ['Negocios creados', 'deals · createdate']]) },
+  negocios_ganados: { nombre: 'Negocios ganados', tipo: 'n', grupo: 'CRM (HubSpot)', por: por_([HS_, ['Negocios cerrados ganados', 'deals · hs_is_closed_won + closedate']]) },
+  valor_negocios: { nombre: 'Importe de negocios ganados', tipo: 'd', grupo: 'CRM (HubSpot)', por: por_([HS_, ['Importe de negocios ganados', 'deals · amount']]) }
 };
 
 var METRICAS_CALC_ = {
-  ctr:              { nombre: 'CTR',               tipo: 'p', fn: function (s) { return div_(s.clics, s.impresiones); } },
-  cpc:              { nombre: 'CPC',               tipo: 'd', fn: function (s) { return costo_(s.inversion, s.clics); } },
-  cpm:              { nombre: 'CPM',               tipo: 'd', fn: function (s) { var v = costo_(s.inversion, s.impresiones); return v === '' ? '' : v * 1000; } },
-  tasa_conversion:  { nombre: 'Tasa de conversión', tipo: 'p', fn: function (s) { return div_(s.conversiones, s.clics); } },
-  cpa:              { nombre: 'Costo por conversión', tipo: 'd', fn: function (s) { return costo_(s.inversion, s.conversiones); } },
-  cpl:              { nombre: 'Costo por lead',    tipo: 'd', fn: function (s) { return costo_(s.inversion, s.leads); } },
-  roas:             { nombre: 'ROAS',              tipo: 'r', fn: function (s) { return div_(s.valor_conversiones, s.inversion); } },
-  costo_por_negocio:{ nombre: 'Costo por negocio ganado', tipo: 'd', fn: function (s) { return costo_(s.inversion, s.negocios_ganados); } },
-  tasa_interaccion: { nombre: 'Tasa de interacción', tipo: 'p', fn: function (s) { return div_(s.interacciones, s.impresiones); } },
-  tasa_rebote:      { nombre: 'Tasa de rebote',     tipo: 'p', fn: function (s) { var v = div_(s.sesiones_comprometidas, s.sesiones); return v === '' ? '' : 1 - v; } },
-  tasa_participacion: { nombre: 'Tasa de participación (web)', tipo: 'p', fn: function (s) { return div_(s.sesiones_comprometidas, s.sesiones); } },
-  tiempo_prom_sesion: { nombre: 'Tiempo prom. por sesión (seg)', tipo: 'r', fn: function (s) { return div_(s.tiempo_interaccion_seg, s.sesiones); } },
-  tiempo_prom_usuario: { nombre: 'Tiempo prom. por usuario activo (seg)', tipo: 'r', fn: function (s) { return div_(s.tiempo_interaccion_seg, s.usuarios_activos); } },
-  vistas_por_sesion: { nombre: 'Vistas por sesión', tipo: 'r', fn: function (s) { return div_(s.vistas, s.sesiones); } }
+  ctr: { nombre: 'CTR', tipo: 'p', grupo: 'Pauta y LinkedIn', formula: 'Clics / Impresiones',
+    por: por_([ADS_, ['CTR', 'metrics.ctr'], LIA_, ['CTR', 'clicks / impressions'], LIO_, ['CTR', 'clickCount / impressionCount']]),
+    fn: function (s) { return div_(s.clics, s.impresiones); } },
+  cpc: { nombre: 'CPC', tipo: 'd', grupo: 'Pauta y LinkedIn', formula: 'Inversión / Clics',
+    por: por_([ADS_, ['CPC prom.', 'metrics.average_cpc'], LIA_, ['CPC promedio', 'costInLocalCurrency / clicks']]),
+    fn: function (s) { return costo_(s.inversion, s.clics); } },
+  cpm: { nombre: 'CPM', tipo: 'd', grupo: 'Pauta y LinkedIn', formula: 'Inversión / Impresiones × 1000',
+    por: por_([ADS_, ['CPM prom.', 'metrics.average_cpm'], LIA_, ['CPM promedio', 'costInLocalCurrency / impressions × 1000']]),
+    fn: function (s) { var v = costo_(s.inversion, s.impresiones); return v === '' ? '' : v * 1000; } },
+  tasa_conversion: { nombre: 'Tasa de conversión', tipo: 'p', grupo: 'Pauta y LinkedIn', formula: 'Conversiones / Clics',
+    por: por_([ADS_, ['Tasa de conv.', 'metrics.conversions_from_interactions_rate'], LIA_, ['Tasa de conversión', 'externalWebsiteConversions / clicks']]),
+    fn: function (s) { return div_(s.conversiones, s.clics); } },
+  cpa: { nombre: 'Costo por conversión', tipo: 'd', grupo: 'Pauta y LinkedIn', formula: 'Inversión / Conversiones',
+    por: por_([ADS_, ['Costo/conv.', 'metrics.cost_per_conversion'], LIA_, ['Costo por conversión', 'costInLocalCurrency / externalWebsiteConversions']]),
+    fn: function (s) { return costo_(s.inversion, s.conversiones); } },
+  cpl: { nombre: 'Costo por lead', tipo: 'd', grupo: 'Pauta y LinkedIn', formula: 'Inversión / Leads',
+    por: por_([LIA_, ['Costo por cliente potencial', 'costInLocalCurrency / oneClickLeads']]),
+    fn: function (s) { return costo_(s.inversion, s.leads); } },
+  roas: { nombre: 'ROAS', tipo: 'r', grupo: 'Pauta y LinkedIn', formula: 'Valor de conversiones / Inversión',
+    por: por_([ADS_, ['Valor de conv./costo', 'metrics.conversions_value / metrics.cost_micros']]),
+    fn: function (s) { return div_(s.valor_conversiones, s.inversion); } },
+  tasa_interaccion: { nombre: 'Tasa de interacción', tipo: 'p', grupo: 'Pauta y LinkedIn', formula: 'Interacciones / Impresiones',
+    por: por_([LIA_, ['Tasa de interacción', 'totalEngagements / impressions'], LIO_, ['Tasa de interacción', 'engagement']]),
+    fn: function (s) { return div_(s.interacciones, s.impresiones); } },
+
+  tasa_rebote: { nombre: 'Porcentaje de rebote', tipo: 'p', grupo: 'Sitio web (GA4)', formula: '1 − Sesiones con interacción / Sesiones',
+    por: por_([GA_, ['Porcentaje de rebote', 'bounceRate']]),
+    fn: function (s) { var v = div_(s.sesiones_comprometidas, s.sesiones); return v === '' ? '' : 1 - v; } },
+  tasa_participacion: { nombre: 'Porcentaje de interacciones', tipo: 'p', grupo: 'Sitio web (GA4)', formula: 'Sesiones con interacción / Sesiones',
+    por: por_([GA_, ['Porcentaje de interacciones', 'engagementRate']]),
+    fn: function (s) { return div_(s.sesiones_comprometidas, s.sesiones); } },
+  tiempo_prom_sesion: { nombre: 'Tiempo de interacción medio por sesión (seg)', tipo: 'r', grupo: 'Sitio web (GA4)', formula: 'Duración de la interacción / Sesiones',
+    por: por_([GA_, ['Tiempo de interacción medio por sesión (seg)', 'userEngagementDuration / sessions']]),
+    fn: function (s) { return div_(s.tiempo_interaccion_seg, s.sesiones); } },
+  tiempo_prom_usuario: { nombre: 'Tiempo de interacción medio por usuario activo (seg)', tipo: 'r', grupo: 'Sitio web (GA4)', formula: 'Duración de la interacción / Usuarios activos',
+    por: por_([GA_, ['Tiempo de interacción medio por usuario activo (seg)', 'userEngagementDuration / activeUsers'], GAP_, ['Tiempo de interacción medio por usuario activo (seg)', 'userEngagementDuration / activeUsers']]),
+    fn: function (s) { return div_(s.tiempo_interaccion_seg, s.usuarios_activos); } },
+  vistas_por_sesion: { nombre: 'Vistas por sesión', tipo: 'r', grupo: 'Sitio web (GA4)', formula: 'Vistas / Sesiones',
+    por: por_([GA_, ['Vistas por sesión', 'screenPageViewsPerSession']]),
+    fn: function (s) { return div_(s.vistas, s.sesiones); } },
+
+  costo_por_negocio: { nombre: 'Costo por negocio ganado', tipo: 'd', grupo: 'CRM (HubSpot)', formula: 'Inversión (Ads) / Negocios ganados (HubSpot)',
+    por: {}, fn: function (s) { return costo_(s.inversion, s.negocios_ganados); } }
 };
+
+/** Texto de ayuda: cómo se llama esta métrica en cada plataforma y su nombre técnico. */
+function ayudaMetrica_(id) {
+  var d = METRICAS_BASE_[id] || METRICAS_CALC_[id];
+  var partes = Object.keys(d.por || {}).map(function (p) { return p + ': ' + d.por[p][0] + ' (' + d.por[p][1] + ')'; });
+  if (d.formula) partes.push('Cálculo: ' + d.formula + ', sobre los totales');
+  return partes.join(' · ');
+}
+
+/** Nombre a mostrar: el oficial de la plataforma si el resultado viene de una sola. */
+function nombreMetrica_(id, plataformas) {
+  var d = METRICAS_BASE_[id] || METRICAS_CALC_[id];
+  if (plataformas.length === 1 && d.por && d.por[plataformas[0]]) return d.por[plataformas[0]][0];
+  return d.nombre;
+}
 
 var PERIODOS_ = {
   ayer: 'Ayer', ultimos_7: 'Últimos 7 días', ultimos_30: 'Últimos 30 días', ultimos_90: 'Últimos 90 días',
@@ -522,8 +587,8 @@ function getOpcionesConsulta() {
     rango = { min: fechas[0], max: fechas[fechas.length - 1] };
   }
   var dims = Object.keys(DIMENSIONES_).map(function (k) { return { id: k, nombre: DIMENSIONES_[k].nombre }; });
-  var base = Object.keys(METRICAS_BASE_).map(function (k) { return { id: k, nombre: METRICAS_BASE_[k].nombre }; });
-  var calc = Object.keys(METRICAS_CALC_).map(function (k) { return { id: k, nombre: METRICAS_CALC_[k].nombre }; });
+  var base = Object.keys(METRICAS_BASE_).map(function (k) { return { id: k, nombre: METRICAS_BASE_[k].nombre, grupo: METRICAS_BASE_[k].grupo, ayuda: ayudaMetrica_(k) }; });
+  var calc = Object.keys(METRICAS_CALC_).map(function (k) { return { id: k, nombre: METRICAS_CALC_[k].nombre, grupo: METRICAS_CALC_[k].grupo, ayuda: ayudaMetrica_(k), calculada: true }; });
   var periodos = Object.keys(PERIODOS_).map(function (k) { return { id: k, nombre: PERIODOS_[k] }; });
   return {
     clientes: clientes,
@@ -781,12 +846,16 @@ function calcularConsulta_(cfg) {
   });
   if (!nd) total = [];
 
+  var platsEnDatos = {};
+  actual.forEach(function (r) { platsEnDatos[r.plataforma] = true; });
+  platsEnDatos = Object.keys(platsEnDatos);
   var encabezado = dims.map(function (d) { return DIMENSIONES_[d].nombre; });
   var tipos = dims.map(function () { return 't'; });
   metricas.forEach(function (m) {
     var def = METRICAS_BASE_[m] || METRICAS_CALC_[m];
-    encabezado.push(def.nombre); tipos.push(def.tipo);
-    if (comp) { encabezado.push(def.nombre + ' (anterior)'); tipos.push(def.tipo); encabezado.push('Δ ' + def.nombre); tipos.push('p'); }
+    var nombre = nombreMetrica_(m, platsEnDatos);
+    encabezado.push(nombre); tipos.push(def.tipo);
+    if (comp) { encabezado.push(nombre + ' (anterior)'); tipos.push(def.tipo); encabezado.push('Δ ' + nombre); tipos.push('p'); }
   });
 
   if (!actual.length) avisos.push('No hay datos para esos filtros en el periodo ' + periodo.inicio + ' a ' + periodo.fin + '.');
