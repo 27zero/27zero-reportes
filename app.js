@@ -5,7 +5,7 @@
   var C = window.APP_CONFIG || {};
   var DEMO = !!C.DEMO;
   var TZ = 'America/Bogota';
-  var INVERSAS = ['cpc', 'cpm', 'cpa', 'cpl', 'costo_por_negocio']; // subir es malo
+  var INVERSAS = ['cpc', 'cpm', 'cpa', 'cpl', 'costo_por_negocio', 'tasa_rebote']; // subir es malo
   var DIMS_TIEMPO = ['fecha', 'semana', 'mes'];
   var TODOS = '__todos';
   var COLORES = ['#3E128C', '#E8772A', '#6A2BD9', '#AC8AE3', '#C25A12', '#1C063F', '#CDB8EF', '#F2A36B', '#8E879F'];
@@ -13,7 +13,11 @@
     resumen:  { dim: ['mes', 'plataforma'], met: ['impresiones', 'clics', 'inversion', 'conversiones', 'leads', 'sesiones', 'ctr', 'cpl'], periodo: 'este_anio', pla: [] },
     campanas: { dim: ['plataforma', 'campana'], met: ['impresiones', 'clics', 'ctr', 'inversion', 'cpc', 'conversiones', 'cpa', 'leads', 'cpl'], periodo: 'ultimos_30', pla: ['Google Ads', 'LinkedIn Ads'], comparar: 'anterior' },
     embudo:   { dim: ['semana'], met: ['sesiones', 'conversiones', 'leads', 'negocios_creados', 'negocios_ganados', 'valor_negocios'], periodo: 'ultimos_90', pla: ['Google Analytics', 'HubSpot'] },
-    organico: { dim: ['semana'], met: ['impresiones', 'clics', 'interacciones', 'tasa_interaccion', 'seguidores_nuevos'], periodo: 'ultimos_90', pla: ['LinkedIn'] }
+    organico: { dim: ['semana'], met: ['impresiones', 'clics', 'interacciones', 'tasa_interaccion', 'seguidores_nuevos'], periodo: 'ultimos_90', pla: ['LinkedIn'] },
+    sitio:    { dim: ['semana'], met: ['usuarios_activos', 'sesiones', 'vistas', 'tasa_rebote', 'tiempo_prom_sesion', 'vistas_por_sesion'], periodo: 'mes_pasado', pla: ['Google Analytics'], comparar: 'ninguno' },
+    paginas:  { dim: ['pagina'], met: ['vistas', 'usuarios_activos', 'tiempo_prom_usuario'], periodo: 'mes_pasado', pla: ['Google Analytics · Páginas'], comparar: 'anterior' },
+    blog:     { dim: ['pagina'], met: ['vistas', 'usuarios_activos', 'tiempo_prom_usuario'], periodo: 'mes_pasado', pla: ['Google Analytics · Páginas'], comparar: 'anterior', filtro: '/blog/' },
+    referencias: { dim: ['canal', 'fuente_medio'], met: ['sesiones', 'usuarios_activos', 'tasa_rebote', 'tiempo_prom_sesion'], periodo: 'mes_pasado', pla: ['Google Analytics'], comparar: 'anterior' }
   };
   var SECCIONES = {
     resumen: { vacio: 'Escribe el análisis de este periodo', titulo: 'Análisis del periodo' },
@@ -941,7 +945,7 @@
         var p = PLANTILLAS[b.dataset.plantilla];
         var dims = p.dim.slice();
         if ($('cliente').value === TODOS && dims.indexOf('cliente') === -1) dims.splice(DIMS_TIEMPO.indexOf(dims[0]) !== -1 ? 1 : 0, 0, 'cliente');
-        aplicarCfg({ clientes: clientesSeleccionados(), plataformas: p.pla, periodo: p.periodo, comparar: p.comparar || 'ninguno', dimensiones: dims, metricas: p.met, grafico: { tipo: $('chartTipo').value } });
+        aplicarCfg({ clientes: clientesSeleccionados(), plataformas: p.pla, periodo: p.periodo, comparar: p.comparar || 'ninguno', dimensiones: dims, metricas: p.met, filtroCampana: p.filtro || '', grafico: { tipo: $('chartTipo').value } });
         consultar();
       });
     });

@@ -35,6 +35,7 @@ var HOJAS = {
   CLIENTES: 'config_clientes',
   GENERAL: 'config_general',
   GA4: 'raw_ga4',
+  GA4_PAGINAS: 'raw_ga4_paginas',
   GADS: 'raw_google_ads',
   LI_ADS: 'raw_linkedin_ads',
   LI_ORG: 'raw_linkedin_org',
@@ -48,7 +49,9 @@ var ENCABEZADOS = {
     'li_ad_account_id', 'li_org_id', 'hubspot_activo', 'notas'],
   config_general: ['parametro', 'valor', 'descripcion'],
   raw_ga4: ['fecha', 'cliente_id', 'canal', 'fuente_medio', 'campana', 'sesiones', 'usuarios',
-    'usuarios_nuevos', 'sesiones_comprometidas', 'eventos_clave', 'ingresos', 'actualizado'],
+    'usuarios_nuevos', 'sesiones_comprometidas', 'eventos_clave', 'ingresos', 'actualizado',
+    'usuarios_activos', 'vistas', 'tiempo_interaccion_seg'],
+  raw_ga4_paginas: ['fecha', 'cliente_id', 'pagina', 'vistas', 'usuarios_activos', 'tiempo_interaccion_seg', 'actualizado'],
   raw_google_ads: ['fecha', 'cliente_id', 'cuenta_id', 'campana_id', 'campana', 'tipo_campana', 'moneda',
     'impresiones', 'clics', 'inversion', 'conversiones', 'valor_conversiones', 'actualizado'],
   raw_linkedin_ads: ['fecha', 'cliente_id', 'cuenta_id', 'campana_id', 'campana', 'moneda', 'impresiones',
@@ -59,7 +62,8 @@ var ENCABEZADOS = {
   raw_hubspot: ['fecha', 'cliente_id', 'metrica', 'fuente', 'cantidad', 'valor', 'actualizado'],
   datos_unificados: ['fecha', 'cliente_id', 'cliente', 'plataforma', 'categoria', 'canal', 'campana', 'moneda',
     'impresiones', 'clics', 'inversion', 'conversiones', 'valor_conversiones', 'sesiones', 'usuarios',
-    'leads', 'negocios_creados', 'negocios_ganados', 'valor_negocios', 'seguidores_nuevos', 'interacciones'],
+    'leads', 'negocios_creados', 'negocios_ganados', 'valor_negocios', 'seguidores_nuevos', 'interacciones',
+    'fuente_medio', 'pagina', 'usuarios_activos', 'vistas', 'sesiones_comprometidas', 'tiempo_interaccion_seg'],
   log: ['momento', 'fuente', 'cliente_id', 'estado', 'filas', 'mensaje'],
   usuarios: ['email', 'nombre', 'rol', 'clientes', 'activo'],
   narrativas: ['clave', 'seccion', 'clientes', 'desde', 'hasta', 'texto', 'autor', 'actualizado']
@@ -250,6 +254,12 @@ function hoja_(nombre) {
   var sh = ss.getSheetByName(nombre);
   if (!sh) sh = ss.insertSheet(nombre);
   var enc = ENCABEZADOS[nombre];
+  if (enc && sh.getLastRow() > 0) {
+    // Hojas que ya existían: si se agregaron columnas nuevas, se amplía la hoja y se actualiza el encabezado.
+    if (sh.getMaxColumns() < enc.length) sh.insertColumnsAfter(sh.getMaxColumns(), enc.length - sh.getMaxColumns());
+    var actual = sh.getRange(1, 1, 1, enc.length).getValues()[0];
+    if (actual.join('|') !== enc.join('|')) sh.getRange(1, 1, 1, enc.length).setValues([enc]).setFontWeight('bold').setBackground('#EDEDED');
+  }
   if (enc && sh.getLastRow() === 0) {
     sh.getRange(1, 1, 1, enc.length).setValues([enc]).setFontWeight('bold').setBackground('#EDEDED');
     sh.setFrozenRows(1);
@@ -425,6 +435,7 @@ function fetchJson_(url, opciones) {
  */
 
 var HOJA_CONSULTAS_ = '_consultas';
+var PLATAFORMA_PAGINAS_ = 'Google Analytics · Páginas';
 
 var DIMENSIONES_ = {
   fecha:      { nombre: 'Fecha',          fn: function (r) { return r.fecha; } },
@@ -435,6 +446,8 @@ var DIMENSIONES_ = {
   categoria:  { nombre: 'Categoría',      fn: function (r) { return r.categoria; } },
   canal:      { nombre: 'Canal',          fn: function (r) { return r.canal || '(sin canal)'; } },
   campana:    { nombre: 'Campaña',        fn: function (r) { return r.campana || '(sin campaña)'; } },
+  fuente_medio: { nombre: 'Fuente / medio', fn: function (r) { return r.fuente_medio || '(sin dato)'; } },
+  pagina:     { nombre: 'Página',         fn: function (r) { return r.pagina || '(sin página)'; } },
   moneda:     { nombre: 'Moneda',         fn: function (r) { return r.moneda || '—'; } }
 };
 var DIMS_TIEMPO_ = ['fecha', 'semana', 'mes'];
@@ -453,7 +466,11 @@ var METRICAS_BASE_ = {
   negocios_ganados:   { nombre: 'Negocios ganados',  tipo: 'n' },
   valor_negocios:     { nombre: 'Valor negocios',    tipo: 'd' },
   seguidores_nuevos:  { nombre: 'Seguidores nuevos', tipo: 'n' },
-  interacciones:      { nombre: 'Interacciones',     tipo: 'n' }
+  interacciones:      { nombre: 'Interacciones',     tipo: 'n' },
+  usuarios_activos:   { nombre: 'Usuarios activos',  tipo: 'n' },
+  vistas:             { nombre: 'Vistas',            tipo: 'n' },
+  sesiones_comprometidas: { nombre: 'Sesiones con interacción', tipo: 'n' },
+  tiempo_interaccion_seg: { nombre: 'Tiempo de interacción total (seg)', tipo: 'n' }
 };
 
 var METRICAS_CALC_ = {
@@ -465,7 +482,12 @@ var METRICAS_CALC_ = {
   cpl:              { nombre: 'Costo por lead',    tipo: 'd', fn: function (s) { return costo_(s.inversion, s.leads); } },
   roas:             { nombre: 'ROAS',              tipo: 'r', fn: function (s) { return div_(s.valor_conversiones, s.inversion); } },
   costo_por_negocio:{ nombre: 'Costo por negocio ganado', tipo: 'd', fn: function (s) { return costo_(s.inversion, s.negocios_ganados); } },
-  tasa_interaccion: { nombre: 'Tasa de interacción', tipo: 'p', fn: function (s) { return div_(s.interacciones, s.impresiones); } }
+  tasa_interaccion: { nombre: 'Tasa de interacción', tipo: 'p', fn: function (s) { return div_(s.interacciones, s.impresiones); } },
+  tasa_rebote:      { nombre: 'Tasa de rebote',     tipo: 'p', fn: function (s) { var v = div_(s.sesiones_comprometidas, s.sesiones); return v === '' ? '' : 1 - v; } },
+  tasa_participacion: { nombre: 'Tasa de participación (web)', tipo: 'p', fn: function (s) { return div_(s.sesiones_comprometidas, s.sesiones); } },
+  tiempo_prom_sesion: { nombre: 'Tiempo prom. por sesión (seg)', tipo: 'r', fn: function (s) { return div_(s.tiempo_interaccion_seg, s.sesiones); } },
+  tiempo_prom_usuario: { nombre: 'Tiempo prom. por usuario activo (seg)', tipo: 'r', fn: function (s) { return div_(s.tiempo_interaccion_seg, s.usuarios_activos); } },
+  vistas_por_sesion: { nombre: 'Vistas por sesión', tipo: 'r', fn: function (s) { return div_(s.vistas, s.sesiones); } }
 };
 
 var PERIODOS_ = {
@@ -505,7 +527,7 @@ function getOpcionesConsulta() {
   var periodos = Object.keys(PERIODOS_).map(function (k) { return { id: k, nombre: PERIODOS_[k] }; });
   return {
     clientes: clientes,
-    plataformas: ['Google Analytics', 'Google Ads', 'LinkedIn Ads', 'LinkedIn', 'HubSpot'],
+    plataformas: ['Google Analytics', PLATAFORMA_PAGINAS_, 'Google Ads', 'LinkedIn Ads', 'LinkedIn', 'HubSpot'],
     dimensiones: dims, metricasBase: base, metricasCalc: calc, periodos: periodos,
     rangoDatos: rango, guardadas: listarConsultas_()
   };
@@ -663,7 +685,9 @@ function calcularConsulta_(cfg) {
   var todas = leerUnificado_().filter(function (r) {
     if (clientes.length && clientes.indexOf(r.cliente_id) === -1) return false;
     if (plataformas.length && plataformas.indexOf(r.plataforma) === -1) return false;
-    if (filtro && String(r.campana).toLowerCase().indexOf(filtro) === -1) return false;
+    // Las páginas son una vista distinta del mismo tráfico: solo entran si se eligen a propósito.
+    if (!plataformas.length && r.plataforma === PLATAFORMA_PAGINAS_) return false;
+    if (filtro && (String(r.campana) + ' ' + String(r.pagina)).toLowerCase().indexOf(filtro) === -1) return false;
     return true;
   });
   var actual = todas.filter(function (r) { return r.fecha >= periodo.inicio && r.fecha <= periodo.fin; });
@@ -690,8 +714,25 @@ function calcularConsulta_(cfg) {
   }
   if (variasPlatConv) avisos.push('El total de conversiones no suma plataformas distintas; compáralas fila por fila.');
 
+  if (plataformas.indexOf('Google Analytics') !== -1 && plataformas.indexOf(PLATAFORMA_PAGINAS_) !== -1 &&
+      metricas.some(function (m) { return ['vistas', 'usuarios_activos', 'tiempo_interaccion_seg'].indexOf(m) !== -1; })) {
+    avisos.push('Elegiste Google Analytics y Google Analytics · Páginas juntas: las vistas y el tiempo se cuentan en las dos. Usa una sola.');
+  }
+
   var aggA = agregar_(actual, dims);
   var aggP = comp ? agregar_(previo, dims) : null;
+
+  // Usuarios: el total del periodo se pide exacto a GA4 (no se puede sumar día a día).
+  var METRICAS_USUARIOS = ['usuarios', 'usuarios_activos', 'tiempo_prom_usuario'];
+  var exA = null, exP = null;
+  var incluyeGA4 = !plataformas.length || plataformas.indexOf('Google Analytics') !== -1 || plataformas.indexOf(PLATAFORMA_PAGINAS_) !== -1;
+  if (incluyeGA4 && !filtro && typeof usuariosExactosGA4_ === 'function' &&
+      metricas.some(function (m) { return METRICAS_USUARIOS.indexOf(m) !== -1; })) {
+    exA = usuariosExactosGA4_(clientes, periodo.inicio, periodo.fin);
+    if (comp) exP = usuariosExactosGA4_(clientes, comp.inicio, comp.fin);
+  }
+  function aplicarExactos(g, ex) { if (g && ex) { g.s.usuarios = ex.usuarios; g.s.usuarios_activos = ex.usuarios_activos; } }
+  if (!dims.length) { aplicarExactos(aggA.grupos[''], exA); if (aggP) aplicarExactos(aggP.grupos[''], exP); }
 
   var filas = aggA.orden.map(function (k) {
     var g = aggA.grupos[k];
@@ -719,6 +760,8 @@ function calcularConsulta_(cfg) {
   // Fila de totales (las razones se recalculan sobre las sumas, no se promedian)
   var totA = agregar_(actual, []).grupos[''];
   var totP = comp ? agregar_(previo, []).grupos[''] : null;
+  aplicarExactos(totA, exA); aplicarExactos(totP, exP);
+  if (exA && dims.length) avisos.push('Usuarios: el total es el valor exacto de GA4 para el periodo. Las filas suman días o canales, así que pueden dar más que el total.');
   var total = ['Total'].concat(dims.slice(1).map(function () { return ''; }));
   // Sin dimensiones, la única fila ya es el total.
   var variasMonedas = Object.keys(monedas).length > 1;
@@ -1128,8 +1171,17 @@ function guardarNarrativaWeb_(usuario, cfg, seccion, texto) {
         [['Organic Search', '(organic)', 520], ['Paid Search', 'Search · Genérica', 210], ['Direct', '(direct)', 260], ['Paid Social', 'Lead Gen · Webinar', 90], ['Referral', '(referral)', 70], ['Email', 'Newsletter EdTech Mentor', 60]]
           .forEach(function (g) {
             var ses = Math.round(ruido(g[2] * k, 0.35));
-            fila({ plataforma: 'Google Analytics', categoria: 'web', canal: g[0], campana: g[1], sesiones: ses, usuarios: Math.round(ses * 0.82),
+            var fm = { 'Organic Search': 'google / organic', 'Paid Search': 'google / cpc', 'Direct': '(direct) / (none)', 'Paid Social': 'linkedin / paid', 'Referral': 'educause.edu / referral', 'Email': 'hs_email / email' }[g[0]];
+            var comp = Math.round(ses * ruido(0.55, 0.2));
+            fila({ plataforma: 'Google Analytics', categoria: 'web', canal: g[0], campana: g[1], fuente_medio: fm, sesiones: ses, usuarios: Math.round(ses * 0.82),
+              usuarios_activos: Math.round(ses * 0.8), vistas: Math.round(ses * ruido(2.3, 0.3)), sesiones_comprometidas: comp,
+              tiempo_interaccion_seg: Math.round(comp * ruido(95, 0.4)),
               conversiones: Math.round(ses * ruido(0.018, 0.9)), valor_conversiones: 0 });
+          });
+        [['/', 900], ['/servicios/', 260], ['/blog/ia-en-educacion/', 180], ['/blog/estrategia-edtech-2026/', 140], ['/casos-de-exito/', 120], ['/contacto/', 80], ['/blog/guia-de-marca/', 60]]
+          .forEach(function (g) {
+            var v = Math.round(ruido(g[1] * k, 0.4)), u = Math.round(v * 0.7);
+            fila({ plataforma: 'Google Analytics · Páginas', categoria: 'web', canal: '', campana: '', pagina: g[0], vistas: v, usuarios_activos: u, tiempo_interaccion_seg: Math.round(u * ruido(55, 0.5)) });
           });
 
         var impOrg = Math.round(ruido(1800 * k, 0.6));
