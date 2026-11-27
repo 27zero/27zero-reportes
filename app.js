@@ -643,9 +643,10 @@
   function pdf() {
     if (!ultimo || !ultimo.res.filas.length) return;
     $('btnPdf').disabled = true; cargando(true);
+    var sinGuardar = Object.keys(editando).some(function (k) { return String(editando[k] || '').trim(); });
     cargarLibsPdf().then(function () {
       construirPdf();
-      toast('PDF descargado.');
+      toast(sinGuardar ? 'PDF descargado. Incluye el análisis que estás escribiendo, pero todavía no está guardado: dale a "Guardar".' : 'PDF descargado.');
     }).catch(function (e) { toast(e.message); })
       .then(function () { $('btnPdf').disabled = false; cargando(false); });
   }
@@ -755,8 +756,13 @@
       if (autor) { fuente('helvetica', 'italic', 8, C.ink4); doc.text(txtPdf(autor), M + 12, y + 2); y += 12; }
       y += 12;
     }
-    var nars = res.narrativas || {};
-    var firma = function (n) { return n ? 'Por ' + n.autor + ' · ' + n.actualizado : ''; };
+    // Lo guardado, más lo que se esté escribiendo en ese momento (aunque todavía no se haya guardado).
+    var nars = {};
+    Object.keys(res.narrativas || {}).forEach(function (k) { nars[k] = res.narrativas[k]; });
+    Object.keys(editando).forEach(function (k) {
+      if (String(editando[k] || '').trim()) nars[k] = { texto: editando[k].trim(), autor: 'Borrador sin guardar', actualizado: '' };
+    });
+    var firma = function (n) { return !n ? '' : (n.actualizado ? 'Por ' + n.autor + ' · ' + n.actualizado : n.autor); };
     if (nars.resumen) bloqueTexto('Análisis del periodo', nars.resumen.texto, firma(nars.resumen));
 
     // ---- Gráfico (la misma imagen que se ve en pantalla)
